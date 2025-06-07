@@ -1,115 +1,95 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import type { AdvocateDTO } from "@/types/advocate";
+import AdvocatesTable from "./components/AdvocatesTable";
 
 export default function Home() {
   const [advocates, setAdvocates] = useState<AdvocateDTO[]>([]);
-  const [filteredAdvocates, setFilteredAdvocates] = useState<AdvocateDTO[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
 
-  useEffect(() => {
-    fetch("/api/advocates")
-      .then((response) => {
-        response.json()
-          .then((jsonResponse: { advocates: AdvocateDTO[] }) => {
+  // Fetch advocates from the API
+  async function getAdvocates() {
+    try {
+      const response = await fetch("/api/advocates");
+      if (!response.ok) {
+        throw new Error("Failed to fetch advocates");
+      }
+      const jsonResponse: { advocates: AdvocateDTO[] } = await response.json();
 
-            // Safe check for empty advocates
-            if (!jsonResponse.advocates || jsonResponse.advocates.length === 0) {
-              setAdvocates([]);
-              setFilteredAdvocates([]);
-              return;
-            }
+      if (!jsonResponse.advocates || jsonResponse.advocates.length === 0) {
+        setAdvocates([]);
+        return;
+      }
 
-            setAdvocates(jsonResponse.advocates);
-            setFilteredAdvocates(jsonResponse.advocates);
-          });
-      });
-  }, []);
-
-  const onChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const input = e.target.value;
-    setSearchTerm(input);
-
-    const normalizedSearchText = input.toLowerCase().trim();
-    const searchTextAsNumber = Number(normalizedSearchText);
-
-    if (normalizedSearchText === '') {
-      setFilteredAdvocates(advocates);
-      return;
+      setAdvocates(jsonResponse.advocates);
     }
+    catch (error) {
+      console.error("Error fetching advocates:", error);
+      setAdvocates([]);
+    }
+  }
 
-    const filteredSearchResults = advocates.filter((advocate) => {
+  // Filters the advocates[] based on search term
+  const filteredAdvocates = useMemo(() => {
+    const normalizedSearchText = searchTerm.toLowerCase().trim();
+    const searchTermAsNumber = Number(normalizedSearchText);
+
+    if (!normalizedSearchText) return advocates;
+
+    return advocates.filter((advocate) => {
       return (
         advocate.firstName.toLowerCase().includes(normalizedSearchText) ||
         advocate.lastName.toLowerCase().includes(normalizedSearchText) ||
         advocate.city.toLowerCase().includes(normalizedSearchText) ||
         advocate.degree.toLowerCase().includes(normalizedSearchText) ||
         advocate.specialties.some((s) => s.toLowerCase().includes(normalizedSearchText)) ||
-        (!isNaN(searchTextAsNumber) && advocate.yearsOfExperience == searchTextAsNumber)
+        (!isNaN(searchTermAsNumber) && advocate.yearsOfExperience === searchTermAsNumber)
       );
     });
+  }, [searchTerm, advocates]);
 
-    setFilteredAdvocates(filteredSearchResults);
+  // Fetch advocates on initial load
+  useEffect(() => {
+    getAdvocates();
+  }, []);
+
+  // Updates searchTerm which triggers filteredAdvocates
+  const onChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setSearchTerm(e.target.value);
   };
 
-  const onClick = () => {
-    if (advocates.length > 0) {
-      setFilteredAdvocates(advocates);
-      setSearchTerm('');
-    }
+  const resetSearchTerm = () => {
+    setSearchTerm('');
   };
 
   return (
     <main style={{ margin: "24px" }}>
-      <h1>Solace Advocates</h1>
+      <h1
+        style={{
+          fontSize: '24px',
+          fontWeight: 600,
+          fontFamily: 'Inter',
+          color: '#265b4e'
+        }}>
+        Solace Advocates
+      </h1>
       <br />
       <br />
       <div>
-        <p>Search</p>
         <p>
           Searching for: {searchTerm}
         </p>
+        <p>Search</p>
         <input
           style={{ border: "1px solid black" }}
           value={searchTerm}
           onChange={onChange} />
-        <button onClick={onClick}>Reset Search</button>
+        <button onClick={resetSearchTerm}>Reset Search</button>
       </div>
       <br />
       <br />
-      <table>
-        <thead>
-          <tr>
-            <th>First Name</th>
-            <th>Last Name</th>
-            <th>City</th>
-            <th>Degree</th>
-            <th>Specialties</th>
-            <th>Years of Experience</th>
-            <th>Phone Number</th>
-          </tr>
-        </thead>
-        <tbody>
-          {filteredAdvocates.map((advocate) => {
-            return (
-              <tr key={advocate.id}>
-                <td>{advocate.firstName}</td>
-                <td>{advocate.lastName}</td>
-                <td>{advocate.city}</td>
-                <td>{advocate.degree}</td>
-                <td>
-                  {(advocate.specialties || []).map((s, idx) => (
-                    <div key={`${s}-${idx}`}>{s}</div>
-                  ))}
-                </td>
-                <td>{advocate.yearsOfExperience}</td>
-                <td>{advocate.phoneNumber}</td>
-              </tr>
-            );
-          })}
-        </tbody>
-      </table>
+      <AdvocatesTable advocates={filteredAdvocates} />
     </main>
   );
 }
