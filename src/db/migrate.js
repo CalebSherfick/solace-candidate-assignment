@@ -1,10 +1,8 @@
 const env = process.env.NODE_ENV;
 
-if (env !== 'production' && env !== 'qa')
-{
+if (env !== 'production' && env !== 'qa') {
   require("dotenv").config({ path: ".env.local" });
 }
-
 
 const { drizzle } = require("drizzle-orm/postgres-js");
 const { migrate } = require("drizzle-orm/postgres-js/migrator");
