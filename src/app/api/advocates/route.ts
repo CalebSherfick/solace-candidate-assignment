@@ -1,12 +1,17 @@
+import { toAdvocateDTO } from "@/app/lib/dto/advocate";
 import db from "../../../db";
 import { advocates } from "../../../db/schema";
-import { advocateData } from "../../../db/seed/advocates";
 
 export async function GET() {
-  // Uncomment this line to use a database
-  // const data = await db.select().from(advocates);
+  const data = await db.select().from(advocates);
 
-  const data = advocateData;
+  // If no advocates, return an empty array
+  if (data.length === 0) {
+    return Response.json({ advocates: [] });
+  }
 
-  return Response.json({ data });
+  // Map the API Response to DTO make it easier to use
+  const formattedData = data.map(toAdvocateDTO);
+
+  return Response.json({ advocates: formattedData });
 }
